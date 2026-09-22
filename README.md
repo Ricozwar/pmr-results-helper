@@ -52,3 +52,8 @@ to the internet. See [SECURITY.md](SECURITY.md).
 ## Support
 
 Use [GitHub Issues](https://github.com/Ricozwar/pmr-results-helper/issues).
+
+## Buy me a coffee
+
+If this helper saved you time on race night, optional tip via Revolut:
+[revolut.me/krzysze55m](http://revolut.me/krzysze55m)
