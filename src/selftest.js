@@ -312,6 +312,9 @@ if (normalizeSessionKind("Practice") !== "practice") throw new Error("kind pract
 if (normalizeSessionKind("Qualifying") !== "qualifying") throw new Error("kind quali");
 if (normalizeSessionKind("Race") !== "race") throw new Error("kind race");
 if (uiSessionLabel("qualifying") !== "Qualifying") throw new Error("ui quali label");
+if (uiSessionLabel("other", "Sesja") !== "PMR Session") throw new Error("ui sesja label");
+if (uiSessionLabel("other", "") !== "PMR Session") throw new Error("ui empty label");
+if (uiSessionLabel("other", "Custom Cup") !== "Custom Cup") throw new Error("ui custom label");
 
 const multi = new RaceSession();
 multi.ingest(parsePacket(buildRaceInfo("Practice", 1)));

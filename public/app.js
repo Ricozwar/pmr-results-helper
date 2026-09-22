@@ -219,7 +219,7 @@ function renderLiveTable(state) {
   const drivers = snap.drivers || [];
   const penalties = state.penalties || {};
   const host = $("liveTable");
-  const title = snap.currentUiLabel || snap.sessionLabel || "Live";
+  const title = snap.currentUiLabel || snap.sessionLabel || "PMR Session";
   $("liveTitle").textContent = `${title} · live`;
   $("trackLabel").textContent = `Track: ${[snap.track, snap.trackVariation].filter(Boolean).join(" / ") || "—"} · ${
     snap.frozen ? "STOP UDP" : "live"
