@@ -134,14 +134,19 @@ input.penalty-input { width: 88px; text-align: right; }
 .modal-scroll { max-height: min(55vh, 480px); overflow: auto; margin: 12px 0; }
 .modal-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 12px; }
 
-.footer-disclaimer {
+.app-footer {
   width: min(1100px, calc(100% - 32px));
   margin: 8px auto 40px;
+}
+.footer-disclaimer,
+.footer-tip {
+  margin: 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.45;
 }
-.footer-disclaimer a { color: var(--accent); }
+.footer-tip { margin-top: 8px; }
+.footer-tip a { color: var(--accent); }
 
 @media (max-width: 700px) {
   .udp-row { grid-template-columns: 1fr; }
