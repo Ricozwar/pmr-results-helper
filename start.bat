@@ -1,11 +1,11 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-title PMR - SimGrid Helper
+title PMR Results Helper
 
 echo.
 echo  ========================================
-echo   PMR -^> SimGrid Helper
+echo   PMR Results Helper
 echo  ========================================
 echo.
 echo  Read README FIRST.txt before you start.

@@ -1,6 +1,6 @@
 # Security
 
-PMR → SimGrid Helper is designed for **local use only**.
+PMR Results Helper is designed for **local use only**.
 
 ## Binding
 

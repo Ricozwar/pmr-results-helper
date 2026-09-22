@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PMR → SimGrid</title>
+  <title>PMR Results Helper</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <header class="top">
     <div>
       <p class="eyebrow">Project Motor Racing</p>
-      <h1>Results for SimGrid</h1>
+      <h1>PMR Results Helper</h1>
     </div>
   </header>
 
@@ -22,7 +22,7 @@
   <section class="toolbar">
     <button id="stopUdpBtn" type="button">Stop UDP</button>
     <button id="penaltiesBtn" class="ghost" type="button" disabled>Race penalties</button>
-    <button id="generateBtn" type="button">Generate SimGrid results</button>
+    <button id="generateBtn" type="button">Export results</button>
     <button id="resetBtn" class="danger" type="button">New session</button>
   </section>
 
@@ -51,8 +51,9 @@
   </main>
 
   <p class="footer-disclaimer">
-    Unofficial community tool. Not affiliated with Straight4 Games or SimGrid.
-    Runs locally on <code>127.0.0.1</code> only — do not expose it to the internet.
+    Unofficial community tool for capturing PMR session results locally.
+    Not affiliated with Straight4 Games / Project Motor Racing.
+    Runs on <code>127.0.0.1</code> only — do not expose it to the internet.
   </p>
 
   <dialog id="penaltiesModal" class="modal">
@@ -69,9 +70,9 @@
 
   <dialog id="generateModal" class="modal">
     <div class="modal-inner wide">
-      <h2>Generate SimGrid results</h2>
+      <h2>Export results</h2>
       <div id="generateStep1">
-        <p class="hint">Upload the SimGrid CSV and PMR JSON entry lists (both required).</p>
+        <p class="hint">Optional: upload CSV + JSON entry lists to map in-game names to usernames / cars / classes (useful for league platforms).</p>
         <label>CSV entry list
           <input id="csvFile" type="file" accept=".csv,text/csv" />
         </label>
@@ -90,7 +91,7 @@
         <div class="modal-actions">
           <button type="button" class="ghost" id="backGenerate">Back</button>
           <button type="button" id="copyTsv">Copy table (TSV)</button>
-          <a id="downloadJson" class="btn-link" href="/api/export.json" download="simgrid-pmr-results.json">Download JSON</a>
+          <a id="downloadJson" class="btn-link" href="/api/export.json" download="pmr-results.json">Download JSON</a>
         </div>
         <p id="copyState" class="hint"></p>
       </div>

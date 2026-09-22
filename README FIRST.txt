@@ -1,10 +1,10 @@
 ================================================================================
-  PMR → SimGrid Helper
+  PMR Results Helper
   README FIRST (read this before starting)
 ================================================================================
 
 Windows helper for Project Motor Racing race admins.
-It builds SimGrid-friendly results from live UDP telemetry (no SimHub).
+It captures live session results from UDP telemetry (no SimHub).
 
 It ONLY works on the PC that runs PMR.
 Do not host this on a website / GitHub Pages — that will not receive game UDP.
@@ -89,9 +89,9 @@ D) Race penalties
    Only for the Race session. Enter seconds → Apply.
    Totals update; positions are NOT auto-resorted.
 
-E) Generate SimGrid results
-   Upload SimGrid CSV + PMR JSON entry lists → race form table.
-   Copy TSV or download JSON.
+E) Export results
+   Optionally upload CSV + JSON entry lists to map names / cars / classes
+   (handy for league result platforms), then copy TSV or download JSON.
 
 F) New session
    Clears tables / penalties / entry list in the app.
@@ -122,7 +122,8 @@ Troubleshooting
 Disclaimer
 --------------------------------------------------------------------------------
 
-Unofficial community tool. Not affiliated with Straight4 Games or SimGrid.
+Unofficial community tool for capturing PMR results locally.
+Not affiliated with Straight4 Games / Project Motor Racing.
 Local use only on 127.0.0.1.
 
 ================================================================================

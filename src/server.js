@@ -325,7 +325,7 @@ const server = http.createServer(async (req, res) => {
       const form = buildRaceForm();
       res.writeHead(200, {
         "Content-Type": "application/json; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="simgrid-pmr-results.json"',
+        "Content-Disposition": 'attachment; filename="pmr-results.json"',
       });
       res.end(JSON.stringify(raceTableToSimgridJson(form), null, 2));
       return;
@@ -334,7 +334,7 @@ const server = http.createServer(async (req, res) => {
       const form = buildRaceForm();
       res.writeHead(200, {
         "Content-Type": "text/tab-separated-values; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="simgrid-race-form.tsv"',
+        "Content-Disposition": 'attachment; filename="pmr-results.tsv"',
       });
       res.end(raceTableToTsv(form));
       return;
@@ -484,7 +484,7 @@ const server = http.createServer(async (req, res) => {
 const httpPort = state.settings.httpPort || 3847;
 
 server.listen(httpPort, "127.0.0.1", async () => {
-  console.log(`PMR → SimGrid helper: http://127.0.0.1:${httpPort}`);
+  console.log(`PMR Results Helper: http://127.0.0.1:${httpPort}`);
   try {
     await bindUdp(udpPort);
   } catch (err) {

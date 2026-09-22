@@ -1,8 +1,8 @@
 {
-  "name": "pmr-simgrid-results",
+  "name": "pmr-results-helper",
   "version": "1.0.0",
   "private": true,
-  "description": "Local helper: Project Motor Racing UDP telemetry → SimGrid race results",
+  "description": "Local helper: capture Project Motor Racing UDP session results (CSV / tables / JSON)",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js"

@@ -1,15 +1,19 @@
-# PMR → SimGrid Helper
+# PMR Results Helper
 
 Unofficial local helper for **Project Motor Racing** race admins.
 
-It listens to PMR UDP telemetry on your PC and builds session results you can
-paste into SimGrid (CSV + race form table / JSON). **No SimHub required.**
+It listens to PMR UDP telemetry on your PC and captures practice, qualifying,
+and race results (live table, lap times, CSV export, optional entry-list
+mapping). **No SimHub required.**
 
-> Not affiliated with Straight4 Games or SimGrid. Runs on `127.0.0.1` only.
+Built as a general **results capture** tool. Exported tables/CSV/JSON can be
+used wherever you publish league results.
+
+> Not affiliated with Straight4 Games / Project Motor Racing. Runs on `127.0.0.1` only.
 
 ## Download (recommended)
 
-1. Open the latest [GitHub Release](https://github.com/Ricozwar/pmr-simgrid-results/releases)
+1. Open the latest [GitHub Release](https://github.com/Ricozwar/pmr-results-helper/releases)
 2. Download the ZIP
 3. Read **`README FIRST.txt`**
 4. Install [Node.js LTS](https://nodejs.org/) (≥ 18) once
@@ -23,7 +27,7 @@ paste into SimGrid (CSV + race form table / JSON). **No SimHub required.**
 - Auto-saves CSV files into `results/` (example: `Quali_Kyalami_22.09.2026.csv`)
 - Click a row to expand lap times
 - Race-only penalties (seconds added to total time; positions not re-sorted)
-- SimGrid wizard: upload CSV + JSON entry lists → race form table + TSV/JSON export
+- Optional export wizard: upload CSV + JSON entry lists → mapped table + TSV/JSON
 
 ## UDP setup in PMR
 
@@ -47,4 +51,4 @@ to the internet. See [SECURITY.md](SECURITY.md).
 
 ## Support
 
-Use [GitHub Issues](https://github.com/Ricozwar/pmr-simgrid-results/issues).
+Use [GitHub Issues](https://github.com/Ricozwar/pmr-results-helper/issues).
