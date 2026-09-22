@@ -1,0 +1,13 @@
+{
+  "name": "pmr-simgrid-results",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lokalny helper: telemetria UDP Project Motor Racing → JSON wyników SimGrid",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

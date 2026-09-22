@@ -1,0 +1,10 @@
+node_modules/
+data/*.json
+data/*.txt
+!data/.gitkeep
+results/*.csv
+!results/.gitkeep
+tmp-sdk/
+dist/PMR-SimGrid-Helper/
+*.log
+.DS_Store
