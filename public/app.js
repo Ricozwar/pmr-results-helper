@@ -26,11 +26,11 @@ function udpHintText(state) {
   const udp = state.udp || {};
   const port = udp.port || state.settings?.udpPort || 7580;
   if (udp.occupiedByOther) {
-    return `Port ${port} zajęty przez ${udp.otherProcess}. Zmień port tutaj i w PMR.`;
+    return `Port ${port} is used by ${udp.otherProcess}. Change the port here and in PMR.`;
   }
   if (udp.error) return udp.error;
-  if (udp.listening) return `Nasłuch na ${port}. W PMR: Host 127.0.0.1, Port ${port}.`;
-  return `Port ${port}: ustaw i kliknij Zastosuj.`;
+  if (udp.listening) return `Listening on ${port}. In PMR: Host 127.0.0.1, Port ${port}.`;
+  return `Port ${port}: set it and click Apply.`;
 }
 
 function updateBanner(state) {
@@ -42,34 +42,34 @@ function updateBanner(state) {
 
   if (udp.occupiedByOther || udp.error) {
     banner.className = "conn-banner bad";
-    $("bannerTitle").textContent = "Błąd portu UDP";
-    $("bannerDetail").textContent = udp.error || `Port zajęty przez ${udp.otherProcess}`;
+    $("bannerTitle").textContent = "UDP port error";
+    $("bannerDetail").textContent = udp.error || `Port used by ${udp.otherProcess}`;
     return;
   }
   if (udp.listening && packets > 0) {
     banner.className = "conn-banner ok";
-    $("bannerTitle").textContent = "Połączono z PMR";
+    $("bannerTitle").textContent = "Connected to PMR";
     const sessionBit = snap.currentUiLabel || snap.sessionLabel || "";
-    $("bannerDetail").textContent = `pakiety: ${packets}${track ? ` · tor ${track}` : ""}${
+    $("bannerDetail").textContent = `packets: ${packets}${track ? ` · track ${track}` : ""}${
       sessionBit ? ` · ${sessionBit}` : ""
     }`;
     return;
   }
   if (udp.listening) {
     banner.className = "conn-banner warn";
-    $("bannerTitle").textContent = "UDP nasłuchuje — brak pakietów";
-    $("bannerDetail").textContent = `Port ${udp.port}. Uruchom sesję w PMR.`;
+    $("bannerTitle").textContent = "UDP listening — no packets yet";
+    $("bannerDetail").textContent = `Port ${udp.port}. Start a session in PMR.`;
     return;
   }
   banner.className = "conn-banner warn";
-  $("bannerTitle").textContent = "UDP nieaktywny";
-  $("bannerDetail").textContent = "Ustaw port i kliknij Zastosuj.";
+  $("bannerTitle").textContent = "UDP inactive";
+  $("bannerDetail").textContent = "Set the port and click Apply.";
 }
 
 function lapDetailHtml(driver) {
   const laps = Array.isArray(driver.lapTimes) ? driver.lapTimes : [];
   if (!laps.length) {
-    return `<p class="hint lap-empty">Brak czasów okrążeń</p>`;
+    return `<p class="hint lap-empty">No lap times</p>`;
   }
   const best = laps.reduce((m, t) => (m == null || t < m ? t : m), null);
   const items = laps
@@ -85,7 +85,7 @@ function lapDetailHtml(driver) {
 
 function driversTableHtml(drivers, penalties = {}, { clickable = false, scope = "live" } = {}) {
   if (!drivers?.length) {
-    return `<p class="hint">Brak kierowców w tej części sesji.</p>`;
+    return `<p class="hint">No drivers in this session segment.</p>`;
   }
   const rows = drivers
     .map((d) => {
@@ -102,7 +102,7 @@ function driversTableHtml(drivers, penalties = {}, { clickable = false, scope = 
         expanded ? "expanded" : ""
       }" ${
         clickable
-          ? `data-vid="${key}" data-scope="${scope}" title="Pokaż czasy okrążeń"`
+          ? `data-vid="${key}" data-scope="${scope}" title="Show lap times"`
           : ""
       }>
         <td>${d.position || "—"}</td>
@@ -119,7 +119,7 @@ function driversTableHtml(drivers, penalties = {}, { clickable = false, scope = 
     .join("");
   return `<table>
     <thead><tr>
-      <th>P</th><th>Nick w grze</th><th>Auto</th><th>Okr.</th><th>Best</th><th>Czas</th><th></th>
+      <th>P</th><th>In-game name</th><th>Car</th><th>Laps</th><th>Best</th><th>Time</th><th></th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
@@ -145,14 +145,14 @@ function getRacePenaltyTarget(state) {
     (snap.currentKind === "race" || /race|wyścig|wyscig/i.test(snap.sessionLabel || "")) &&
     (snap.drivers || []).length;
   if (raceSeg) {
-    return { segmentId: raceSeg.id, drivers: raceSeg.drivers, penalties: raceSeg.penalties || {}, label: raceSeg.uiLabel || "Wyścig" };
+    return { segmentId: raceSeg.id, drivers: raceSeg.drivers, penalties: raceSeg.penalties || {}, label: raceSeg.uiLabel || "Race" };
   }
   if (liveIsRace) {
     return {
       segmentId: null,
       drivers: snap.drivers,
       penalties: state.penalties || {},
-      label: snap.currentUiLabel || "Wyścig (live)",
+      label: snap.currentUiLabel || "Race (live)",
     };
   }
   return null;
@@ -170,16 +170,16 @@ function renderSegments(state) {
       const track = [seg.track, seg.trackVariation].filter(Boolean).join(" / ") || "—";
       const file = seg.csvFile
         ? `<a class="btn-link" href="/api/results/${encodeURIComponent(seg.csvFile)}" download>${seg.csvFile}</a>`
-        : `<button type="button" class="ghost export-seg" data-seg-id="${seg.id}">Zapisz / Pobierz CSV</button>`;
+        : `<button type="button" class="ghost export-seg" data-seg-id="${seg.id}">Save / Download CSV</button>`;
       const penBtn =
         seg.kind === "race"
-          ? `<button type="button" class="ghost race-penalties-btn" data-seg-id="${seg.id}">Kary</button>`
+          ? `<button type="button" class="ghost race-penalties-btn" data-seg-id="${seg.id}">Penalties</button>`
           : "";
       return `<section class="card table-card segment-card" data-seg="${seg.id}">
         <div class="card-head">
           <div>
-            <h2>${seg.uiLabel || seg.label || "Sesja"}</h2>
-            <p class="hint">Tor: ${track} · zapisano · ${seg.csvFile ? "CSV OK" : "CSV do pobrania"} · kliknij wiersz = okrążenia</p>
+            <h2>${seg.uiLabel || seg.label || "Session"}</h2>
+            <p class="hint">Track: ${track} · saved · ${seg.csvFile ? "CSV OK" : "CSV pending"} · click row = laps</p>
           </div>
           <div class="segment-actions">${penBtn}${file}</div>
         </div>
@@ -221,16 +221,16 @@ function renderLiveTable(state) {
   const host = $("liveTable");
   const title = snap.currentUiLabel || snap.sessionLabel || "Live";
   $("liveTitle").textContent = `${title} · live`;
-  $("trackLabel").textContent = `Tor: ${[snap.track, snap.trackVariation].filter(Boolean).join(" / ") || "—"} · ${
+  $("trackLabel").textContent = `Track: ${[snap.track, snap.trackVariation].filter(Boolean).join(" / ") || "—"} · ${
     snap.frozen ? "STOP UDP" : "live"
-  } · ${snap.sessionState || "—"} · kliknij wiersz = okrążenia`;
+  } · ${snap.sessionState || "—"} · click row = laps`;
 
   if (!drivers.length) {
     const port = state.udp?.port || state.settings?.udpPort || 7580;
     host.innerHTML = `<p class="hint">${
       state.udp?.listening
-        ? `Czekam na dane sesji. PMR → 127.0.0.1:${port}. Trening / Quali / Wyścig pojawią się automatycznie.`
-        : `Najpierw ustaw port UDP i kliknij Zastosuj.`
+        ? `Waiting for session data. PMR → 127.0.0.1:${port}. Practice / Quali / Race appear automatically.`
+        : `Set the UDP port first and click Apply.`
     }</p>`;
     return;
   }
@@ -242,7 +242,7 @@ function renderLiveTable(state) {
 function renderRaceFormTable(rows) {
   const host = $("raceFormTable");
   if (!rows?.length) {
-    host.innerHTML = `<p class="hint">Brak wierszy — wgraj entrylistę i zbierz wynik z gry.</p>`;
+    host.innerHTML = `<p class="hint">No rows — upload the entry list and capture a race result.</p>`;
     return;
   }
   host.innerHTML = `<table>
@@ -254,7 +254,7 @@ function renderRaceFormTable(rows) {
       .map(
         (r) => `<tr class="${r.penaltySec > 0 ? "has-penalty" : ""} ${r.unmapped ? "bad" : ""}">
       <td>${r.position}</td>
-      <td class="${r.unmapped ? "unmapped-name" : ""}">${r.name || r.inGameName || "⚠ brak mapowania"}</td>
+      <td class="${r.unmapped ? "unmapped-name" : ""}">${r.name || r.inGameName || "⚠ unmapped"}</td>
       <td>${r.className || ""}</td>
       <td>${r.carNum ?? ""}</td>
       <td>${r.car || ""}</td>
@@ -274,14 +274,14 @@ function renderPenaltiesTable(target) {
   const penalties = { ...(target?.penalties || {}), ...draftPenalties };
   const host = $("penaltiesTable");
   const title = $("penaltiesForm")?.querySelector("h2");
-  if (title) title.textContent = `Kary — ${target?.label || "Wyścig"}`;
+  if (title) title.textContent = `Penalties — ${target?.label || "Race"}`;
   if (!drivers.length) {
-    host.innerHTML = `<p class="hint">Brak stawki wyścigu do karania.</p>`;
+    host.innerHTML = `<p class="hint">No race field to apply penalties to.</p>`;
     return;
   }
   host.innerHTML = `<table>
     <thead><tr>
-      <th>POZ</th><th>Nick</th><th>Czas</th><th>Kara (s)</th><th>Po karze</th>
+      <th>POS</th><th>Name</th><th>Time</th><th>Penalty (s)</th><th>After</th>
     </tr></thead>
     <tbody>${drivers
       .map((d) => {
@@ -328,7 +328,7 @@ function openPenaltiesForSegment(segmentId) {
     segmentId: seg.id,
     drivers: seg.drivers,
     penalties: seg.penalties || {},
-    label: seg.uiLabel || "Wyścig",
+    label: seg.uiLabel || "Race",
   });
   $("penaltiesModal").showModal();
 }
@@ -364,15 +364,15 @@ function render(state) {
   renderLiveTable(state);
 
   if (state.entrylistMeta?.loaded) {
-    $("uploadMeta").textContent = `Wczytano ${state.entrylistMeta.mergedCount} kierowców (CSV ${state.entrylistMeta.csvCount}, JSON ${state.entrylistMeta.jsonCount}).`;
+    $("uploadMeta").textContent = `Loaded ${state.entrylistMeta.mergedCount} drivers (CSV ${state.entrylistMeta.csvCount}, JSON ${state.entrylistMeta.jsonCount}).`;
   }
 
   if (!$("generateStep2").hidden) {
     renderRaceFormTable(state.raceForm || []);
     const meta = state.entrylistMeta || {};
     $("generateMeta").textContent = meta.loaded
-      ? `${meta.mergedCount} kierowców z entrylisty · ${state.raceForm?.length || 0} wierszy w formularzu`
-      : "Brak entrylisty — wróć i wgraj pliki.";
+      ? `${meta.mergedCount} drivers from entry list · ${state.raceForm?.length || 0} form rows`
+      : "No entry list — go back and upload the files.";
   }
 }
 
@@ -422,7 +422,7 @@ $("generateBtn").onclick = () => {
   $("uploadEntrylist").disabled = !ready;
   if (latestState?.entrylistMeta?.loaded && latestState.raceForm?.length) {
     // allow skip if already uploaded this session
-    $("uploadMeta").textContent = `Już wczytano ${latestState.entrylistMeta.mergedCount} kierowców — możesz wgrać ponownie albo od razu pokazać tabelę.`;
+    $("uploadMeta").textContent = `Already loaded ${latestState.entrylistMeta.mergedCount} drivers — re-upload or show the table.`;
     $("uploadEntrylist").disabled = false;
   }
   $("generateModal").showModal();
@@ -470,9 +470,9 @@ $("uploadEntrylist").onclick = async () => {
     $("generateStep1").hidden = true;
     $("generateStep2").hidden = false;
     renderRaceFormTable(state.raceForm || []);
-    $("generateMeta").textContent = `${state.entrylistMeta?.mergedCount || 0} kierowców wczytanych · ${
+    $("generateMeta").textContent = `${state.entrylistMeta?.mergedCount || 0} drivers loaded · ${
       state.raceForm?.length || 0
-    } wierszy`;
+    } rows`;
   } catch (err) {
     $("uploadMeta").textContent = String(err.message || err);
     $("uploadMeta").className = "hint bad";
@@ -482,7 +482,7 @@ $("uploadEntrylist").onclick = async () => {
 $("copyTsv").onclick = async () => {
   const tsv = latestState?.raceFormTsv || "";
   await navigator.clipboard.writeText(tsv);
-  $("copyState").textContent = "Skopiowano TSV — wklej do arkusza / formularza.";
+  $("copyState").textContent = "TSV copied — paste into a spreadsheet / form.";
   setTimeout(() => ($("copyState").textContent = ""), 2000);
 };
 
@@ -513,10 +513,10 @@ $("checkUdp").onclick = async () => {
   const data = await fetch(`/api/port-check?port=${port}`).then((r) => r.json());
   $("udpHint").className = `hint ${data.occupiedByOther ? "bad" : "ok"}`;
   $("udpHint").textContent = data.occupiedByOther
-    ? `Port ${port} zajęty przez ${data.otherProcess}`
+    ? `Port ${port} is used by ${data.otherProcess}`
     : data.occupants?.some((row) => row.ours)
-      ? `Port ${port} trzyma ten helper — OK`
-      : `Port ${port} jest wolny`;
+      ? `Port ${port} is held by this helper — OK`
+      : `Port ${port} is free`;
 };
 
 const events = new EventSource("/api/events");

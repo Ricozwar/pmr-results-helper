@@ -36,8 +36,8 @@ function flagForDriver(d) {
 
 function buildSessionCsvRows(drivers, penalties = {}) {
   const hasPenalty = Object.values(penalties || {}).some((v) => Number(v) > 0);
-  const header = ["P", "Nick w grze", "Auto", "Okr.", "Best", "Czas", "Flaga"];
-  if (hasPenalty) header.push("Kara_s");
+  const header = ["P", "In-game name", "Car", "Laps", "Best", "Time", "Flag"];
+  if (hasPenalty) header.push("Penalty_s");
 
   const lines = [header.map(escapeCsv).join(",")];
   const list = [...(drivers || [])].sort((a, b) => {

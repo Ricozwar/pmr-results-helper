@@ -311,7 +311,7 @@ const { buildSessionCsvRows, buildResultFilename } = require("./session-csv");
 if (normalizeSessionKind("Practice") !== "practice") throw new Error("kind practice");
 if (normalizeSessionKind("Qualifying") !== "qualifying") throw new Error("kind quali");
 if (normalizeSessionKind("Race") !== "race") throw new Error("kind race");
-if (uiSessionLabel("qualifying") !== "Kwalifikacje") throw new Error("ui quali label");
+if (uiSessionLabel("qualifying") !== "Qualifying") throw new Error("ui quali label");
 
 const multi = new RaceSession();
 multi.ingest(parsePacket(buildRaceInfo("Practice", 1)));
@@ -335,7 +335,7 @@ if (!multi.hasLiveDrivers()) throw new Error("practice should have drivers");
 const archived = multi.ingest(parsePacket(buildRaceInfo("Qualifying", 1)));
 if (archived.length !== 1) throw new Error(`expected 1 archived segment, got ${archived.length}`);
 if (archived[0].kind !== "practice") throw new Error("archived should be practice");
-if (archived[0].uiLabel !== "Trening") throw new Error("ui label Trening");
+if (archived[0].uiLabel !== "Practice") throw new Error("ui label Practice");
 if (multi.segments.length !== 1) throw new Error("segments length");
 if (multi.hasLiveDrivers()) throw new Error("live should be empty after kind change");
 if (multi.sessionLabel !== "Qualifying") throw new Error("live label Qualifying");
@@ -345,7 +345,7 @@ if (fname !== "Practice_Daytona_21.09.2026.csv") {
   throw new Error(`filename expected Practice_Daytona_21.09.2026.csv got ${fname}`);
 }
 const csvBody = buildSessionCsvRows(archived[0].drivers, {});
-if (!csvBody.startsWith("P,Nick w grze,Auto,Okr.,Best,Czas,Flaga")) throw new Error("csv header");
+if (!csvBody.startsWith("P,In-game name,Car,Laps,Best,Time,Flag")) throw new Error("csv header");
 if (!csvBody.includes("PracticeDriver")) throw new Error("csv body driver");
 
 // --- no duplicate archive after complete + stopped; 1-lap race time from best ---

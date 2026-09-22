@@ -5,6 +5,7 @@ data/*.txt
 results/*.csv
 !results/.gitkeep
 tmp-sdk/
-dist/PMR-SimGrid-Helper/
+dist/
+tools/i18n-en.js
 *.log
 .DS_Store

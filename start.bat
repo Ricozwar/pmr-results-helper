@@ -8,26 +8,26 @@ echo  ========================================
 echo   PMR -^> SimGrid Helper
 echo  ========================================
 echo.
-echo  Najpierw przeczytaj plik:  README FIRST.txt
+echo  Read README FIRST.txt before you start.
 echo.
 
 where node >nul 2>nul
 if errorlevel 1 (
-  echo  [BLAD] Nie znaleziono Node.js.
+  echo  [ERROR] Node.js was not found.
   echo.
-  echo  Zainstaluj Node.js LTS ze strony:
+  echo  Install Node.js LTS from:
   echo    https://nodejs.org/
-  echo  Potem zamknij to okno i uruchom START.bat ponownie.
+  echo  Then close this window and run START.bat again.
   echo.
   pause
   exit /b 1
 )
 
-echo  Uruchamiam helper...
-echo  Przegladarka: http://127.0.0.1:3847
-echo  Tego okna NIE zamykaj, dopoki korzystasz z programu.
+echo  Starting helper...
+echo  Browser: http://127.0.0.1:3847
+echo  Keep this window open while you use the app.
 echo.
-echo  Zamkniecie: krzyzyk okna albo Ctrl+C
+echo  Close: window X or Ctrl+C
 echo  ----------------------------------------
 echo.
 
@@ -35,8 +35,8 @@ start "" "http://127.0.0.1:3847"
 node src\server.js
 if errorlevel 1 (
   echo.
-  echo  [BLAD] Program zakonczyl sie z bledem.
-  echo  Sprawdz port UDP / README FIRST.txt
+  echo  [ERROR] The helper exited with an error.
+  echo  Check the UDP port / README FIRST.txt
   echo.
   pause
 )

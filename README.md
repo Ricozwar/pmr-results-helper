@@ -1,54 +1,50 @@
-# PMR → SimGrid Results
+# PMR → SimGrid Helper
 
-Lokalny helper: telemetria UDP z **Project Motor Racing** → tabela jak formularz Race Results w SimGrid (+ JSON).
+Unofficial local helper for **Project Motor Racing** race admins.
 
-Nie wymaga SimHub. Działa tylko na Twoim PC: `http://127.0.0.1:3847`.
+It listens to PMR UDP telemetry on your PC and builds session results you can
+paste into SimGrid (CSV + race form table / JSON). **No SimHub required.**
 
-## Start
+> Not affiliated with Straight4 Games or SimGrid. Runs on `127.0.0.1` only.
 
-```bat
-start.bat
-```
+## Download (recommended)
 
-albo:
+1. Open the latest [GitHub Release](https://github.com/Ricozwar/pmr-simgrid-results/releases)
+2. Download the ZIP
+3. Read **`README FIRST.txt`**
+4. Install [Node.js LTS](https://nodejs.org/) (≥ 18) once
+5. Double-click **`START.bat`**
+6. Open http://127.0.0.1:3847
 
-```bat
-node src\server.js
-```
+## What it does
 
-Otwórz [http://127.0.0.1:3847](http://127.0.0.1:3847).
+- Live classification from PMR UDP (default port `7580`)
+- Automatic weekend segments: **Practice / Qualifying / Race**
+- Auto-saves CSV files into `results/` (example: `Quali_Kyalami_22.09.2026.csv`)
+- Click a row to expand lap times
+- Race-only penalties (seconds added to total time; positions not re-sorted)
+- SimGrid wizard: upload CSV + JSON entry lists → race form table + TSV/JSON export
 
-## UDP w PMR
+## UDP setup in PMR
 
-1. Settings → Preferences
-2. UDP Enabled: On
-3. Host: `127.0.0.1`
-4. Port: ten sam co w helperze (zwykle `7580`)
+Settings → Preferences:
 
-SimHub też lubi brać `7580` — na czas zbierania wyników wyłącz SimHub albo zmień port w obu miejscach.
+- UDP Enabled: On
+- Host: `127.0.0.1`
+- Port: same as the helper (usually `7580`)
 
-## Flow
+Close SimHub (or change both ports) if `7580` is already taken.
 
-1. Live klasyfikacja z gry
-2. **Stop UDP** po fladze (albo automatycznie po SessionStopped)
-3. Opcjonalnie **Kary po wyścigu** (sekundy → TOTAL TIME)
-4. **Wygeneruj wyniki do SimGrid** → wgraj CSV + JSON entrylisty → tabela POS/NAME/CLASS/#/CAR/LAPS/BEST/TOTAL/DNF/DNS
-5. Kopiuj TSV albo pobierz JSON
+## License
 
-## Udostępnianie znajomemu
+Proprietary freeware — free for personal / league admin use.
+See [LICENSE](LICENSE). No resale / competing redistribution.
 
-**GitHub Pages nie zadziała.** To nie jest strona statyczna — backend Node musi nasłuchiwać UDP na `127.0.0.1` na maszynie, na której leci PMR.
+## Security
 
-Znajomy potrzebuje:
-1. sklonować / pobrać repo
-2. mieć Node.js ≥ 18
-3. uruchomić `node src/server.js` u siebie lokalnie
-4. w swojej grze ustawić UDP na `127.0.0.1` + ten sam port
+The HTTP UI and UDP socket bind to localhost only. Do not forward these ports
+to the internet. See [SECURITY.md](SECURITY.md).
 
-Możesz wrzucić kod na GitHub (repo prywatne/publiczne) — to tylko dystrybucja plików, nie hosting live.
+## Support
 
-## Pliki
-
-- `src/` — UDP parser, sesja, entrylista, serwer
-- `public/` — UI
-- `data/` — ustawienia / kary / entrylista sesji (lokalne, nie commitowane)
+Use [GitHub Issues](https://github.com/Ricozwar/pmr-simgrid-results/issues).

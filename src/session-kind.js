@@ -25,10 +25,10 @@ function shortFileLabel(kind, rawLabel = "") {
 }
 
 function uiSessionLabel(kind, rawLabel = "") {
-  if (kind === "practice") return "Trening";
-  if (kind === "qualifying") return "Kwalifikacje";
-  if (kind === "race") return "Wyścig";
-  return String(rawLabel || "Sesja").trim() || "Sesja";
+  if (kind === "practice") return "Practice";
+  if (kind === "qualifying") return "Qualifying";
+  if (kind === "race") return "Race";
+  return String(rawLabel || "Session").trim() || "Session";
 }
 
 module.exports = {

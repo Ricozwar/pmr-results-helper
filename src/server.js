@@ -37,7 +37,7 @@ function persistArchivedSegments(segments) {
     const filename = buildResultFilename(seg, seg.frozenAt ? new Date(seg.frozenAt) : new Date());
     const saved = store.writeResultFile(filename, csv);
     seg.csvFile = saved;
-    console.log(`Zapisano wyniki: results/${saved}`);
+    console.log(`Saved results: results/${saved}`);
   }
   // Kary należą do zarchiwizowanej części — nie przenoszą się na kolejną.
   state.penalties = {};
@@ -219,7 +219,7 @@ async function refreshOccupants(port = udpPort) {
 async function bindUdp(port) {
   const next = Number(port);
   if (!Number.isInteger(next) || next < 1024 || next > 65535) {
-    throw new Error("Port UDP musi być liczbą 1024–65535");
+    throw new Error("UDP port must be a number between 1024 and 65535");
   }
 
   await closeUdp();
@@ -227,7 +227,7 @@ async function bindUdp(port) {
   const others = occupants.filter((row) => !row.ours);
   if (others.length) {
     udpPort = next;
-    udpError = `Port ${next} zajęty przez ${others.map((row) => row.name).join(", ")}`;
+    udpError = `Port ${next} used by ${others.map((row) => row.name).join(", ")}`;
     udpOccupantInfo = occupants;
     udpBound = false;
     throw new Error(udpError);
@@ -263,7 +263,7 @@ async function bindUdp(port) {
   });
 
   udpOccupantInfo = await udpOccupants(next);
-  console.log(`Nasłuch UDP PMR: 127.0.0.1:${next}`);
+  console.log(`PMR UDP listening: 127.0.0.1:${next}`);
 }
 
 function serveStatic(req, res) {
@@ -356,7 +356,7 @@ const server = http.createServer(async (req, res) => {
       const id = decodeURIComponent(url.pathname.slice("/api/sessions/".length, -"/export-csv".length));
       const snap = session.snapshot();
       const seg = (snap.segments || []).find((s) => s.id === id);
-      if (!seg) throw new Error("Nie znaleziono segmentu sesji");
+      if (!seg) throw new Error("Session segment not found");
       const csv = buildSessionCsvRows(seg.drivers, seg.penalties || {});
       const filename = seg.csvFile || buildResultFilename(seg, seg.frozenAt ? new Date(seg.frozenAt) : new Date());
       const saved = store.writeResultFile(filename, csv);
@@ -371,11 +371,11 @@ const server = http.createServer(async (req, res) => {
       const csvText = body.csv || body.csvText || "";
       const jsonText = body.json || body.jsonText || "";
       if (!csvText.trim() || !jsonText.trim()) {
-        throw new Error("Wgraj oba pliki: CSV i JSON entrylisty");
+        throw new Error("Upload both files: CSV and JSON entry lists");
       }
       const csvRows = parseCsvEntrylist(csvText);
       const jsonDrivers = parseJsonEntrylist(jsonText);
-      if (!csvRows.length) throw new Error("CSV entrylisty nie zawiera kierowców");
+      if (!csvRows.length) throw new Error("CSV entry list contains no drivers");
       mergedEntrylist = mergeEntrylist(csvRows, jsonDrivers);
       state.entrylistCsv = csvText;
       state.entrylistJson = typeof jsonText === "string" ? jsonText : JSON.stringify(jsonText);
@@ -408,9 +408,9 @@ const server = http.createServer(async (req, res) => {
       const segmentId = body.segmentId || null;
       if (segmentId) {
         const seg = session.segments.find((s) => s.id === segmentId);
-        if (!seg) throw new Error("Nie znaleziono segmentu");
+        if (!seg) throw new Error("Segment not found");
         if (seg.kind !== "race") {
-          throw new Error("Kary można dopisać tylko do sesji wyścigu");
+          throw new Error("Penalties can only be applied to the race session");
         }
         seg.penalties = cleaned;
         const csv = buildSessionCsvRows(seg.drivers, seg.penalties);
@@ -421,7 +421,7 @@ const server = http.createServer(async (req, res) => {
         // Live race only
         const kind = session.currentKind || require("./session-kind").normalizeSessionKind(session.sessionLabel);
         if (kind !== "race") {
-          throw new Error("Kary na żywo tylko podczas wyścigu (nie trening/quali)");
+          throw new Error("Live penalties only during race (not practice/quali)");
         }
         state.penalties = cleaned;
         store.writeJson("penalties.json", state.penalties);

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -10,31 +10,31 @@
   <header class="top">
     <div>
       <p class="eyebrow">Project Motor Racing</p>
-      <h1>Wyniki do SimGrid</h1>
+      <h1>Results for SimGrid</h1>
     </div>
   </header>
 
   <div id="connBanner" class="conn-banner warn" role="status">
-    <strong id="bannerTitle">Oczekiwanie na PMR…</strong>
-    <span id="bannerDetail">Ustaw port UDP i uruchom grę.</span>
+    <strong id="bannerTitle">Waiting for PMR…</strong>
+    <span id="bannerDetail">Set the UDP port and start the game.</span>
   </div>
 
   <section class="toolbar">
     <button id="stopUdpBtn" type="button">Stop UDP</button>
-    <button id="penaltiesBtn" class="ghost" type="button" disabled>Kary po wyścigu</button>
-    <button id="generateBtn" type="button">Wygeneruj wyniki do SimGrid</button>
-    <button id="resetBtn" class="danger" type="button">Nowa sesja</button>
+    <button id="penaltiesBtn" class="ghost" type="button" disabled>Race penalties</button>
+    <button id="generateBtn" type="button">Generate SimGrid results</button>
+    <button id="resetBtn" class="danger" type="button">New session</button>
   </section>
 
   <section class="udp-bar card">
     <div class="udp-row">
-      <label>Port UDP z gry
+      <label>Game UDP port
         <input id="udpPort" type="number" min="1024" max="65535" step="1" />
       </label>
-      <button id="applyUdp" type="button">Zastosuj port</button>
-      <button id="checkUdp" class="ghost" type="button">Sprawdź port</button>
+      <button id="applyUdp" type="button">Apply port</button>
+      <button id="checkUdp" class="ghost" type="button">Check port</button>
     </div>
-    <p class="hint" id="udpHint">W PMR: Host <code>127.0.0.1</code>, Port zwykle <code>7580</code>.</p>
+    <p class="hint" id="udpHint">In PMR: Host <code>127.0.0.1</code>, Port usually <code>7580</code>.</p>
   </section>
 
   <main class="main-col">
@@ -43,65 +43,67 @@
       <div class="card-head">
         <div>
           <h2 id="liveTitle">Live</h2>
-          <p id="trackLabel" class="hint">Tor: —</p>
+          <p id="trackLabel" class="hint">Track: —</p>
         </div>
       </div>
       <div id="liveTable"></div>
     </section>
   </main>
 
-  <!-- Kary -->
+  <p class="footer-disclaimer">
+    Unofficial community tool. Not affiliated with Straight4 Games or SimGrid.
+    Runs locally on <code>127.0.0.1</code> only — do not expose it to the internet.
+  </p>
+
   <dialog id="penaltiesModal" class="modal">
     <form method="dialog" id="penaltiesForm" class="modal-inner">
-      <h2>Kary po wyścigu</h2>
-      <p class="hint">Tylko sesja <strong>Wyścig</strong> (nie trening / kwalifikacje). Kara w sekundach dodaje się do czasu. Pozycja z gry nie jest przeliczana.</p>
+      <h2>Race penalties</h2>
+      <p class="hint">Race session only (not practice / qualifying). Penalty seconds are added to total time. Race positions from the game are not re-sorted.</p>
       <div id="penaltiesTable" class="modal-scroll"></div>
       <div class="modal-actions">
-        <button type="submit" value="cancel" class="ghost">Anuluj</button>
-        <button type="submit" value="apply" id="applyPenalties">Zastosuj kary</button>
+        <button type="submit" value="cancel" class="ghost">Cancel</button>
+        <button type="submit" value="apply" id="applyPenalties">Apply penalties</button>
       </div>
     </form>
   </dialog>
 
-  <!-- Wygeneruj wyniki -->
   <dialog id="generateModal" class="modal">
     <div class="modal-inner wide">
-      <h2>Wygeneruj wyniki do SimGrid</h2>
+      <h2>Generate SimGrid results</h2>
       <div id="generateStep1">
-        <p class="hint">Wgraj CSV SimGrid i JSON entrylisty PMR (oba wymagane).</p>
-        <label>CSV entrylista
+        <p class="hint">Upload the SimGrid CSV and PMR JSON entry lists (both required).</p>
+        <label>CSV entry list
           <input id="csvFile" type="file" accept=".csv,text/csv" />
         </label>
-        <label>JSON entrylista
+        <label>JSON entry list
           <input id="jsonFile" type="file" accept=".json,application/json" />
         </label>
         <p id="uploadMeta" class="hint"></p>
         <div class="modal-actions">
-          <button type="button" class="ghost" id="closeGenerate1">Anuluj</button>
-          <button type="button" id="uploadEntrylist" disabled>Wczytaj i pokaż tabelę</button>
+          <button type="button" class="ghost" id="closeGenerate1">Cancel</button>
+          <button type="button" id="uploadEntrylist" disabled>Load and show table</button>
         </div>
       </div>
       <div id="generateStep2" hidden>
         <p id="generateMeta" class="hint"></p>
         <div id="raceFormTable" class="modal-scroll"></div>
         <div class="modal-actions">
-          <button type="button" class="ghost" id="backGenerate">Wróć</button>
-          <button type="button" id="copyTsv">Kopiuj tabelę (TSV)</button>
-          <a id="downloadJson" class="btn-link" href="/api/export.json" download="simgrid-pmr-results.json">Pobierz JSON</a>
+          <button type="button" class="ghost" id="backGenerate">Back</button>
+          <button type="button" id="copyTsv">Copy table (TSV)</button>
+          <a id="downloadJson" class="btn-link" href="/api/export.json" download="simgrid-pmr-results.json">Download JSON</a>
         </div>
         <p id="copyState" class="hint"></p>
       </div>
     </div>
   </dialog>
 
-  <!-- Nowa sesja -->
   <dialog id="resetModal" class="modal">
     <form method="dialog" class="modal-inner">
-      <h2>Nowa sesja?</h2>
-      <p>Na pewno? Usunie stawkę, kary i wgraną entrylistę tej sesji.</p>
+      <h2>New session?</h2>
+      <p>This clears the current field, race penalties, and uploaded entry list. CSV files in <code>results/</code> stay on disk.</p>
       <div class="modal-actions">
-        <button type="submit" value="cancel" class="ghost">Anuluj</button>
-        <button type="submit" value="confirm" class="danger">Tak, nowa sesja</button>
+        <button type="submit" value="cancel" class="ghost">Cancel</button>
+        <button type="submit" value="confirm" class="danger">Yes, new session</button>
       </div>
     </form>
   </dialog>
