@@ -24,7 +24,7 @@ function lpFloats(arr) {
   return out;
 }
 
-function buildRaceInfo(sessionName = "Race", stateId = 1) {
+function buildRaceInfo(sessionName = "Race", stateId = 1, laps = 10) {
   const parts = [
     Buffer.from([0]),
     Buffer.alloc(2),
@@ -39,14 +39,27 @@ function buildRaceInfo(sessionName = "Race", stateId = 1) {
   ];
   parts[1].writeUInt16LE(1, 0);
   parts[8].writeFloatLE(5000, 0);
-  parts[8].writeFloatLE(10, 4);
+  parts[8].writeFloatLE(laps, 4);
   parts[8].writeFloatLE(0, 8);
   parts[8].writeFloatLE(22, 12);
   parts[8].writeFloatLE(30, 16);
   return Buffer.concat(parts);
 }
 
-function buildParticipant({ id, player, car, name, cls, pos, lap, cur, best, finished = 0, dq = 0 }) {
+function buildParticipant({
+  id,
+  player,
+  car,
+  name,
+  cls,
+  pos,
+  lap,
+  cur,
+  best,
+  finished = 0,
+  dq = 0,
+  progress = 0.5,
+}) {
   const head = Buffer.alloc(1 + 2 + 4 + 1);
   head[0] = 1;
   head.writeUInt16LE(1, 1);
@@ -58,7 +71,7 @@ function buildParticipant({ id, player, car, name, cls, pos, lap, cur, best, fin
   mid.writeInt32LE(lap, o); o += 4;
   mid.writeFloatLE(cur, o); o += 4;
   mid.writeFloatLE(best, o); o += 4;
-  mid.writeFloatLE(0.5, o); o += 4;
+  mid.writeFloatLE(progress, o); o += 4;
   mid.writeInt32LE(1, o);
   const tail = Buffer.from([0, finished, dq, 0, 0, 0, 0]);
   return Buffer.concat([
@@ -423,6 +436,150 @@ const inactiveDup = raceOne.ingest(parsePacket(buildRaceInfo("Race", 0)));
 if (inactiveDup.length !== 0 || raceOne.segments.length !== 1) {
   throw new Error("post-archive spam created duplicate segment");
 }
+
+// --- pre-finish hold: lock before leader finishes; ignore corrupt post-finish order ---
+const { buildSessionLapsCsvRows } = require("./session-csv");
+const pf = new RaceSession();
+pf.ingest(parsePacket(buildRaceInfo("Race", 1, 2)));
+pf.ingest(
+  parsePacket(
+    buildParticipant({
+      id: 1,
+      player: true,
+      car: "MX-5",
+      name: "Leader",
+      cls: "MX5",
+      pos: 1,
+      lap: 1,
+      cur: 80.1,
+      best: 80.1,
+      progress: 0.4,
+    })
+  )
+);
+pf.ingest(
+  parsePacket(
+    buildParticipant({
+      id: 2,
+      player: false,
+      car: "MX-5",
+      name: "Second",
+      cls: "MX5",
+      pos: 2,
+      lap: 1,
+      cur: 81.0,
+      best: 81.0,
+      progress: 0.3,
+    })
+  )
+);
+// complete lap 1 → start lap 2
+pf.ingest(
+  parsePacket(
+    buildParticipant({
+      id: 1,
+      player: true,
+      car: "MX-5",
+      name: "Leader",
+      cls: "MX5",
+      pos: 1,
+      lap: 2,
+      cur: 40.0,
+      best: 80.1,
+      progress: 0.5,
+    })
+  )
+);
+pf.ingest(
+  parsePacket(
+    buildParticipant({
+      id: 2,
+      player: false,
+      car: "MX-5",
+      name: "Second",
+      cls: "MX5",
+      pos: 2,
+      lap: 2,
+      cur: 42.0,
+      best: 81.0,
+      progress: 0.4,
+    })
+  )
+);
+// leader near finish — should hard-lock hold with open lap
+pf.ingest(
+  parsePacket(
+    buildParticipant({
+      id: 1,
+      player: true,
+      car: "MX-5",
+      name: "Leader",
+      cls: "MX5",
+      pos: 1,
+      lap: 2,
+      cur: 79.5,
+      best: 80.1,
+      progress: 0.95,
+    })
+  )
+);
+if (!pf.preFinishHold?.locked) throw new Error("expected pre-finish hold locked near finish");
+const lockedOrder = pf.preFinishHold.drivers.map((d) => d.name);
+if (lockedOrder[0] !== "Leader" || lockedOrder[1] !== "Second") {
+  throw new Error(`bad locked order: ${lockedOrder.join(",")}`);
+}
+const lockedLeader = pf.preFinishHold.drivers.find((d) => d.name === "Leader");
+if (!lockedLeader?.lapTimes || lockedLeader.lapTimes.length < 2) {
+  throw new Error(`leader should include last lap in hold, got ${lockedLeader?.lapTimes?.length}`);
+}
+
+// corrupt post-finish packets (swap order)
+pf.ingest(
+  parsePacket(
+    buildParticipant({
+      id: 1,
+      player: true,
+      car: "MX-5",
+      name: "Leader",
+      cls: "MX5",
+      pos: 5,
+      lap: 3,
+      cur: 0,
+      best: 80.1,
+      finished: 1,
+      progress: 1,
+    })
+  )
+);
+pf.ingest(
+  parsePacket(
+    buildParticipant({
+      id: 2,
+      player: false,
+      car: "MX-5",
+      name: "Second",
+      cls: "MX5",
+      pos: 1,
+      lap: 2,
+      cur: 0,
+      best: 81.0,
+      progress: 0.5,
+    })
+  )
+);
+const pfArchived = pf.ingest({ type: "sessionStopped", packetType: 3, packetVersion: 1 });
+if (pfArchived.length !== 1) throw new Error("pre-finish race should archive once");
+if (pfArchived[0].captureSource !== "pre_finish") {
+  throw new Error(`expected pre_finish capture, got ${pfArchived[0].captureSource}`);
+}
+if (pfArchived[0].drivers[0].name !== "Leader" || pfArchived[0].drivers[0].position !== 1) {
+  throw new Error("archived race used corrupt live order instead of pre-finish hold");
+}
+const lapsCsv = buildSessionLapsCsvRows(pfArchived[0].drivers, {});
+if (!lapsCsv.includes("Lap1") || !lapsCsv.includes("Lap2")) {
+  throw new Error("laps CSV missing Lap columns");
+}
+if (!lapsCsv.includes("Leader")) throw new Error("laps CSV missing leader");
 
 console.log("ok");
 console.log(JSON.stringify({ entrylist: form.map((r) => ({ pos: r.position, name: r.name, dns: r.dns, unmapped: r.unmapped, pen: r.penaltySec })), legacy: json, multiFile: fname, raceTotal: one.totalTimeMs }, null, 2));

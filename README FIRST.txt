@@ -82,6 +82,13 @@ B) CSV files
    Example name: Quali_Daytona_21.09.2026.csv
    You can also download it from the UI link on each saved card.
 
+   Race also saves a second file with per-lap times:
+        Race_Daytona_21.09.2026_laps.csv
+
+   Race results use a “pre-finish” snapshot (standings just before the
+   leader crosses the line), because PMR often corrupts the order after
+   the finish. Optional: click “Save standings now” during the race.
+
 C) Stop UDP / Resume UDP
    Optional manual freeze of the live table.
 

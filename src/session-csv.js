@@ -68,6 +68,53 @@ function buildSessionCsvRows(drivers, penalties = {}) {
   return lines.join("\n") + "\n";
 }
 
+function buildSessionLapsCsvRows(drivers, penalties = {}) {
+  const list = [...(drivers || [])].sort((a, b) => {
+    if (a.position && b.position) return a.position - b.position;
+    if (a.position) return -1;
+    if (b.position) return 1;
+    return 0;
+  });
+  const maxLaps = list.reduce(
+    (max, d) => Math.max(max, Array.isArray(d.lapTimes) ? d.lapTimes.length : 0, d.completedLaps || 0),
+    0
+  );
+  const hasPenalty = Object.values(penalties || {}).some((v) => Number(v) > 0);
+  const header = ["P", "In-game name", "Car", "Laps", "Best", "Time", "Flag"];
+  for (let i = 1; i <= maxLaps; i += 1) header.push(`Lap${i}`);
+  if (hasPenalty) header.push("Penalty_s");
+
+  const lines = [header.map(escapeCsv).join(",")];
+  for (const d of list) {
+    const key = String(d.vehicleId ?? d.name ?? "");
+    const pen = Number(penalties[key] ?? penalties[d.name] ?? 0) || 0;
+    const laps = Array.isArray(d.lapTimes) ? d.lapTimes : [];
+    const base =
+      d.totalTimeMs != null && Number.isFinite(d.totalTimeMs)
+        ? d.totalTimeMs
+        : laps.length
+          ? laps.reduce((sum, t) => sum + t, 0)
+          : null;
+    const total =
+      base != null && Number.isFinite(base) ? base + Math.round(pen * 1000) : null;
+    const row = [
+      d.position || "",
+      d.name || "",
+      d.car || "",
+      d.completedLaps ?? laps.length ?? "",
+      formatRaceTime(d.bestLapMs) || "",
+      formatRaceTime(total) || "",
+      flagForDriver(d),
+    ];
+    for (let i = 0; i < maxLaps; i += 1) {
+      row.push(formatRaceTime(laps[i]) || "");
+    }
+    if (hasPenalty) row.push(pen || "");
+    lines.push(row.map(escapeCsv).join(","));
+  }
+  return lines.join("\n") + "\n";
+}
+
 function buildResultFilename(segment, at = new Date()) {
   const short =
     segment.shortLabel ||
@@ -77,9 +124,16 @@ function buildResultFilename(segment, at = new Date()) {
   return `${short}_${track}_${date}.csv`;
 }
 
+function buildLapsResultFilename(segment, at = new Date()) {
+  const base = buildResultFilename(segment, at).replace(/\.csv$/i, "");
+  return `${base}_laps.csv`;
+}
+
 module.exports = {
   buildSessionCsvRows,
+  buildSessionLapsCsvRows,
   buildResultFilename,
+  buildLapsResultFilename,
   formatDateLocal,
   sanitizePart,
   escapeCsv,

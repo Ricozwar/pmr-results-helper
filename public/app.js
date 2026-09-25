@@ -50,9 +50,16 @@ function updateBanner(state) {
     banner.className = "conn-banner ok";
     $("bannerTitle").textContent = "Connected to PMR";
     const sessionBit = snap.currentUiLabel || snap.sessionLabel || "";
+    const hold = snap.preFinishHold;
+    const holdBit =
+      hold?.locked
+        ? " · Pre-finish standings locked"
+        : hold?.driverCount
+          ? " · Pre-finish hold ready"
+          : "";
     $("bannerDetail").textContent = `packets: ${packets}${track ? ` · track ${track}` : ""}${
       sessionBit ? ` · ${sessionBit}` : ""
-    }`;
+    }${holdBit}`;
     return;
   }
   if (udp.listening) {
@@ -171,17 +178,27 @@ function renderSegments(state) {
       const file = seg.csvFile
         ? `<a class="btn-link" href="/api/results/${encodeURIComponent(seg.csvFile)}" download>${seg.csvFile}</a>`
         : `<button type="button" class="ghost export-seg" data-seg-id="${seg.id}">Save / Download CSV</button>`;
+      const lapsFile =
+        seg.kind === "race"
+          ? seg.lapsCsvFile
+            ? `<a class="btn-link" href="/api/results/${encodeURIComponent(seg.lapsCsvFile)}" download>Laps CSV</a>`
+            : `<button type="button" class="ghost export-laps-seg" data-seg-id="${seg.id}">Download laps CSV</button>`
+          : "";
       const penBtn =
         seg.kind === "race"
           ? `<button type="button" class="ghost race-penalties-btn" data-seg-id="${seg.id}">Penalties</button>`
           : "";
+      const badge =
+        seg.captureSource === "pre_finish"
+          ? `<span class="capture-badge" title="Standings frozen just before the leader finished">Pre-finish capture</span>`
+          : "";
       return `<section class="card table-card segment-card" data-seg="${seg.id}">
         <div class="card-head">
           <div>
-            <h2>${seg.uiLabel || seg.label || "Session"}</h2>
+            <h2>${seg.uiLabel || seg.label || "Session"} ${badge}</h2>
             <p class="hint">Track: ${track} · saved · ${seg.csvFile ? "CSV OK" : "CSV pending"} · click row = laps</p>
           </div>
-          <div class="segment-actions">${penBtn}${file}</div>
+          <div class="segment-actions">${penBtn}${file}${lapsFile}</div>
         </div>
         ${driversTableHtml(seg.drivers, seg.penalties || {}, { clickable: true, scope: seg.id })}
       </section>`;
@@ -195,6 +212,22 @@ function renderSegments(state) {
       const id = btn.dataset.segId;
       try {
         const data = await post(`/api/sessions/${encodeURIComponent(id)}/export-csv`);
+        if (data.file) {
+          window.location.href = `/api/results/${encodeURIComponent(data.file)}`;
+        }
+        const fresh = await fetch("/api/state").then((r) => r.json());
+        render(fresh);
+      } catch (err) {
+        btn.textContent = String(err.message || err);
+      }
+    });
+  });
+
+  host.querySelectorAll(".export-laps-seg").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.segId;
+      try {
+        const data = await post(`/api/sessions/${encodeURIComponent(id)}/export-laps-csv`);
         if (data.file) {
           window.location.href = `/api/results/${encodeURIComponent(data.file)}`;
         }
@@ -220,7 +253,13 @@ function renderLiveTable(state) {
   const penalties = state.penalties || {};
   const host = $("liveTable");
   const title = snap.currentUiLabel || snap.sessionLabel || "PMR Session";
-  $("liveTitle").textContent = `${title} · live`;
+  const hold = snap.preFinishHold;
+  const holdNote = hold?.locked
+    ? " · pre-finish locked"
+    : hold?.driverCount
+      ? " · pre-finish ready"
+      : "";
+  $("liveTitle").textContent = `${title} · live${holdNote}`;
   $("trackLabel").textContent = `Track: ${[snap.track, snap.trackVariation].filter(Boolean).join(" / ") || "—"} · ${
     snap.frozen ? "STOP UDP" : "live"
   } · ${snap.sessionState || "—"} · click row = laps`;
@@ -359,6 +398,13 @@ function render(state) {
   const frozen = Boolean(snap.frozen);
   $("stopUdpBtn").textContent = frozen ? "Resume UDP" : "Stop UDP";
   $("penaltiesBtn").disabled = !getRacePenaltyTarget(state);
+  const liveRace =
+    (snap.currentKind === "race" || /race|wyścig|wyscig/i.test(snap.sessionLabel || "")) &&
+    (snap.drivers || []).length > 0;
+  $("snapshotBtn").disabled = !liveRace;
+  $("snapshotBtn").textContent = snap.preFinishHold?.locked
+    ? "Standings locked"
+    : "Save standings now";
 
   renderSegments(state);
   renderLiveTable(state);
@@ -391,6 +437,15 @@ $("stopUdpBtn").onclick = async () => {
   const frozen = latestState?.snapshot?.frozen;
   const data = await post(frozen ? "/api/unfreeze" : "/api/freeze");
   render(data);
+};
+
+$("snapshotBtn").onclick = async () => {
+  try {
+    const data = await post("/api/snapshot-standings");
+    render(data);
+  } catch (err) {
+    $("snapshotBtn").textContent = String(err.message || err);
+  }
 };
 
 $("penaltiesBtn").onclick = () => openPenaltiesDefault();

@@ -39,6 +39,7 @@ function emptyDriver(vehicleId) {
     finished: false,
     dq: false,
     inPits: false,
+    lapProgress: 0,
   };
 }
 
@@ -81,6 +82,7 @@ class RaceSession {
     // After archive, ignore participant spam until next active segment.
     this.acceptingDrivers = true;
     this.awaitingFinalize = false;
+    this.preFinishHold = null;
   }
 
   notePacket(type) {
@@ -114,56 +116,201 @@ class RaceSession {
   }
 
   /** Fill missing lap/total from best / current before snapshotting a segment. */
-  finalizeDriversBeforeArchive() {
-    for (const driver of this.drivers.values()) {
-      if (!(driver.name || driver.seenRacing || driver.active)) continue;
+  finalizeDriverTimes(driver, { includeOpenLap = false } = {}) {
+    if (!(driver.name || driver.seenRacing || driver.active)) return;
 
-      const fromPrev = toMs(driver.prevCurrentLapTime);
-      const fromCur = toMs(driver.currentLapTime);
-      const fromBest = driver.bestLapMs;
+    const fromPrev = toMs(driver.prevCurrentLapTime);
+    const fromCur = toMs(driver.currentLapTime);
+    const fromBest = driver.bestLapMs;
 
-      if (!driver.lapTimes.length) {
-        const rem = fromPrev || fromCur || fromBest;
-        if (rem) {
-          driver.lapTimes.push(rem);
-          driver.lastLapMs = rem;
+    if (!driver.lapTimes.length) {
+      const rem = fromPrev || fromCur || fromBest;
+      if (rem) {
+        driver.lapTimes.push(rem);
+        driver.lastLapMs = rem;
+      }
+    }
+
+    // 1-lap race: often finish flag arrives with empty currentLapTime but bestLap set.
+    if (driver.lapTimes.length === 0 && fromBest) {
+      driver.lapTimes.push(fromBest);
+      driver.lastLapMs = fromBest;
+    }
+
+    if (includeOpenLap) {
+      const openLap = fromPrev || fromCur;
+      const expected =
+        this.lapsInEvent > 0 ? this.lapsInEvent : Math.max(driver.completedLaps || 0, driver.lapTimes.length) + 1;
+      if (openLap && driver.lapTimes.length < expected) {
+        if (driver.lapTimes[driver.lapTimes.length - 1] !== openLap) {
+          driver.lapTimes.push(openLap);
+          driver.lastLapMs = openLap;
+        }
+      } else if (openLap && !driver.lapTimes.length) {
+        driver.lapTimes.push(openLap);
+        driver.lastLapMs = openLap;
+      }
+    }
+
+    if (fromBest) {
+      driver.bestLapMs = driver.bestLapMs ? Math.min(driver.bestLapMs, fromBest) : fromBest;
+    } else if (driver.lapTimes.length) {
+      driver.bestLapMs = Math.min(...driver.lapTimes);
+    }
+
+    if (driver.completedLaps < driver.lapTimes.length) {
+      driver.completedLaps = driver.lapTimes.length;
+    }
+    if (driver.completedLaps === 0 && (driver.finished || driver.lapTimes.length)) {
+      driver.completedLaps = Math.max(1, driver.lapTimes.length);
+    }
+
+    driver.totalTimeMs = driver.lapTimes.length
+      ? driver.lapTimes.reduce((sum, t) => sum + t, 0)
+      : fromBest || null;
+  }
+
+  finalizeDriversBeforeArchive(driversIterable = null, opts = {}) {
+    const list = driversIterable || this.drivers.values();
+    for (const driver of list) {
+      this.finalizeDriverTimes(driver, opts);
+    }
+  }
+
+  clearPreFinishHold() {
+    this.preFinishHold = null;
+  }
+
+  anyDriverFinished() {
+    for (const d of this.drivers.values()) {
+      if (d.finished || d.dq) return true;
+    }
+    return false;
+  }
+
+  findLeader() {
+    let leader = null;
+    for (const d of this.drivers.values()) {
+      if (!(d.name || d.seenRacing || d.active)) continue;
+      if (!leader || (d.position > 0 && (leader.position === 0 || d.position < leader.position))) {
+        leader = d;
+      }
+    }
+    return leader;
+  }
+
+  isLeaderNearFinish(leader) {
+    if (!leader || leader.finished || leader.dq) return false;
+    const progress = Number(leader.lapProgress) || 0;
+    if (progress < 0.92) return false;
+    if (this.lapsInEvent > 0) {
+      return (leader.currentLap || 0) >= this.lapsInEvent;
+    }
+    // Timed race: high progress alone is not enough; rely on sessionFinished lock.
+    return false;
+  }
+
+  /** Clone live field into pre-finish hold (optionally locking). */
+  refreshPreFinishHold({ lock = false, reason = "rolling" } = {}) {
+    if (this.currentKind !== "race") return;
+    if (this.preFinishHold?.locked && !lock) return;
+    if (!this.hasLiveDrivers()) return;
+
+    const drivers = this.liveDriversList();
+    const leader = drivers.find((d) => d.position === 1) || drivers[0];
+    this.finalizeDriversBeforeArchive(drivers, {
+      includeOpenLap: Boolean(leader && this.isLeaderNearFinish(leader)),
+    });
+    // Recompute totals after finalize on clones
+    for (const d of drivers) {
+      if (d.lapTimes.length) {
+        d.totalTimeMs = d.lapTimes.reduce((sum, t) => sum + t, 0);
+        d.completedLaps = Math.max(d.completedLaps || 0, d.lapTimes.length);
+        d.bestLapMs = Math.min(...d.lapTimes);
+      }
+    }
+
+    this.preFinishHold = {
+      capturedAt: Date.now(),
+      locked: Boolean(lock || this.preFinishHold?.locked),
+      reason: lock ? reason : this.preFinishHold?.locked ? this.preFinishHold.reason : reason,
+      drivers,
+    };
+  }
+
+  lockPreFinishHold(reason) {
+    this.refreshPreFinishHold({ lock: true, reason });
+    if (this.preFinishHold) this.preFinishHold.locked = true;
+  }
+
+  /** Manual / automatic lock of standings before the leader finishes. */
+  snapshotStandings(reason = "manual") {
+    if (this.currentKind !== "race") {
+      throw new Error("Pre-finish snapshot is only available during race");
+    }
+    if (!this.hasLiveDrivers()) {
+      throw new Error("No live race standings to save");
+    }
+    this.lockPreFinishHold(reason);
+    return this.preFinishHold;
+  }
+
+  maybeUpdatePreFinishHold(parsed) {
+    if (this.currentKind !== "race") return;
+    if (this.preFinishHold?.locked) return;
+
+    if (this.anyDriverFinished()) {
+      // Keep previous clean hold; do not refresh from potentially corrupt live map.
+      if (this.preFinishHold?.drivers?.length) {
+        this.preFinishHold.locked = true;
+        if (!this.preFinishHold.reason || this.preFinishHold.reason === "rolling") {
+          this.preFinishHold.reason = "first_finished";
         }
       }
+      return;
+    }
 
-      // 1-lap race: often finish flag arrives with empty currentLapTime but bestLap set.
-      if (driver.lapTimes.length === 0 && fromBest) {
-        driver.lapTimes.push(fromBest);
-        driver.lastLapMs = fromBest;
-      }
+    this.refreshPreFinishHold({ lock: false, reason: "rolling" });
 
-      if (fromBest) {
-        driver.bestLapMs = driver.bestLapMs ? Math.min(driver.bestLapMs, fromBest) : fromBest;
-      } else if (driver.lapTimes.length) {
-        driver.bestLapMs = Math.min(...driver.lapTimes);
-      }
-
-      if (driver.completedLaps < driver.lapTimes.length) {
-        driver.completedLaps = driver.lapTimes.length;
-      }
-      if (driver.completedLaps === 0 && (driver.finished || driver.lapTimes.length)) {
-        driver.completedLaps = Math.max(1, driver.lapTimes.length);
-      }
-
-      driver.totalTimeMs = driver.lapTimes.length
-        ? driver.lapTimes.reduce((sum, t) => sum + t, 0)
-        : fromBest || null;
+    const leader =
+      parsed?.racePos === 1
+        ? this.drivers.get(parsed.vehicleId)
+        : this.findLeader();
+    if (leader && this.isLeaderNearFinish(leader)) {
+      this.lockPreFinishHold("leader_near_finish");
     }
   }
 
   archiveLive(reason, penalties = {}) {
     if (!this.acceptingDrivers && !this.awaitingFinalize && !this.hasLiveDrivers()) return null;
-    if (!this.hasLiveDrivers()) {
+    if (!this.hasLiveDrivers() && !(this.preFinishHold?.drivers?.length)) {
       this.acceptingDrivers = false;
       this.awaitingFinalize = false;
       return null;
     }
-    this.finalizeDriversBeforeArchive();
+
     const kind = normalizeSessionKind(this.sessionLabel);
+    let drivers;
+    let captureSource = "live";
+    let capturedAt = Date.now();
+
+    if (kind === "race" && this.preFinishHold?.drivers?.length) {
+      drivers = this.preFinishHold.drivers.map(cloneDriver);
+      this.finalizeDriversBeforeArchive(drivers, { includeOpenLap: true });
+      captureSource = "pre_finish";
+      capturedAt = this.preFinishHold.capturedAt || capturedAt;
+    } else {
+      this.finalizeDriversBeforeArchive();
+      drivers = this.liveDriversList();
+    }
+
+    if (!drivers.length) {
+      this.acceptingDrivers = false;
+      this.awaitingFinalize = false;
+      this.clearPreFinishHold();
+      return null;
+    }
+
     const segment = {
       id: `seg-${++this.segmentSeq}`,
       kind,
@@ -175,9 +322,12 @@ class RaceSession {
       gameMode: this.gameMode,
       frozenAt: Date.now(),
       freezeReason: reason,
-      drivers: this.liveDriversList(),
+      captureSource,
+      capturedAt,
+      drivers,
       penalties: { ...(penalties || {}) },
       csvFile: null,
+      lapsCsvFile: null,
     };
     this.segments.push(segment);
     this.drivers = new Map();
@@ -187,6 +337,7 @@ class RaceSession {
     this.freezeReason = null;
     this.acceptingDrivers = false;
     this.awaitingFinalize = false;
+    this.clearPreFinishHold();
     return segment;
   }
 
@@ -270,6 +421,10 @@ class RaceSession {
       this.acceptingDrivers = true;
       this.awaitingFinalize = false;
       if (!this.startedAt) this.startedAt = Date.now();
+      // New active race segment — clear stale pre-finish hold from previous race.
+      if (this.currentKind === "race" && !this.hasLiveDrivers()) {
+        this.clearPreFinishHold();
+      }
     }
 
     // Do NOT archive on complete immediately — wait for finish packets / stopped / inactive.
@@ -312,6 +467,9 @@ class RaceSession {
     driver.inPits = Boolean(parsed.inPits);
     driver.dq = Boolean(parsed.dq);
     driver.currentLapTime = parsed.currentLapTime || 0;
+    if (parsed.lapProgress != null && Number.isFinite(parsed.lapProgress)) {
+      driver.lapProgress = parsed.lapProgress;
+    }
 
     const best = toMs(parsed.bestLapTime);
     if (best) driver.bestLapMs = driver.bestLapMs ? Math.min(driver.bestLapMs, best) : best;
@@ -335,6 +493,18 @@ class RaceSession {
       driver.prevCurrentLapTime = parsed.currentLapTime;
     }
     driver.currentLap = lap;
+
+    // Lock the last CLEAN standings before finish flags (often arrive with corrupt order).
+    const finishingNow = Boolean(parsed.sessionFinished) || Boolean(parsed.dq);
+    if (this.currentKind === "race" && finishingNow && !this.preFinishHold?.locked) {
+      if (this.preFinishHold?.drivers?.length) {
+        this.preFinishHold.locked = true;
+        this.preFinishHold.reason = "pre_first_finished";
+      } else {
+        // No prior rolling hold — best effort clone before mutating this driver to finished.
+        this.refreshPreFinishHold({ lock: true, reason: "pre_first_finished" });
+      }
+    }
 
     if (parsed.sessionFinished) {
       driver.finished = true;
@@ -366,6 +536,8 @@ class RaceSession {
     driver.totalTimeMs = driver.lapTimes.length
       ? driver.lapTimes.reduce((sum, t) => sum + t, 0)
       : driver.bestLapMs || null;
+
+    this.maybeUpdatePreFinishHold(parsed);
   }
 
   freeze(reason) {
@@ -399,6 +571,14 @@ class RaceSession {
       frozen: this.frozen,
       frozenAt: this.frozenAt,
       freezeReason: this.freezeReason,
+      preFinishHold: this.preFinishHold
+        ? {
+            capturedAt: this.preFinishHold.capturedAt,
+            locked: Boolean(this.preFinishHold.locked),
+            reason: this.preFinishHold.reason,
+            driverCount: (this.preFinishHold.drivers || []).length,
+          }
+        : null,
       udpPackets: this.udpPackets,
       lastPacketAt: this.lastPacketAt,
       packetCounts: this.packetCounts,

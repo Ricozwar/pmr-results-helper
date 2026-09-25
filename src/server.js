@@ -16,7 +16,7 @@ const {
   raceTableToSimgridJson,
 } = require("./entrylist");
 const store = require("./store");
-const { buildSessionCsvRows, buildResultFilename } = require("./session-csv");
+const { buildSessionCsvRows, buildSessionLapsCsvRows, buildResultFilename, buildLapsResultFilename } = require("./session-csv");
 
 const publicDir = path.join(__dirname, "..", "public");
 const session = new RaceSession();
@@ -33,11 +33,19 @@ let udpOccupantInfo = [];
 function persistArchivedSegments(segments) {
   if (!segments?.length) return;
   for (const seg of segments) {
+    const at = seg.frozenAt ? new Date(seg.frozenAt) : new Date();
     const csv = buildSessionCsvRows(seg.drivers, seg.penalties || {});
-    const filename = buildResultFilename(seg, seg.frozenAt ? new Date(seg.frozenAt) : new Date());
+    const filename = buildResultFilename(seg, at);
     const saved = store.writeResultFile(filename, csv);
     seg.csvFile = saved;
     console.log(`Saved results: results/${saved}`);
+
+    if (seg.kind === "race") {
+      const lapsCsv = buildSessionLapsCsvRows(seg.drivers, seg.penalties || {});
+      const lapsName = buildLapsResultFilename(seg, at);
+      seg.lapsCsvFile = store.writeResultFile(lapsName, lapsCsv);
+      console.log(`Saved lap times: results/${seg.lapsCsvFile}`);
+    }
   }
   // Kary należą do zarchiwizowanej części — nie przenoszą się na kolejną.
   state.penalties = {};
@@ -366,6 +374,26 @@ const server = http.createServer(async (req, res) => {
       broadcast();
       return json(res, 200, { ok: true, file: saved, results: store.listResultFiles() });
     }
+    if (req.method === "POST" && url.pathname.startsWith("/api/sessions/") && url.pathname.endsWith("/export-laps-csv")) {
+      const id = decodeURIComponent(url.pathname.slice("/api/sessions/".length, -"/export-laps-csv".length));
+      const snap = session.snapshot();
+      const seg = (snap.segments || []).find((s) => s.id === id);
+      if (!seg) throw new Error("Session segment not found");
+      const csv = buildSessionLapsCsvRows(seg.drivers, seg.penalties || {});
+      const filename =
+        seg.lapsCsvFile || buildLapsResultFilename(seg, seg.frozenAt ? new Date(seg.frozenAt) : new Date());
+      const saved = store.writeResultFile(filename, csv);
+      seg.lapsCsvFile = saved;
+      const liveSeg = session.segments.find((s) => s.id === id);
+      if (liveSeg) liveSeg.lapsCsvFile = saved;
+      broadcast();
+      return json(res, 200, { ok: true, file: saved, results: store.listResultFiles() });
+    }
+    if (req.method === "POST" && url.pathname === "/api/snapshot-standings") {
+      session.snapshotStandings("manual");
+      broadcast();
+      return json(res, 200, currentPayload());
+    }
     if (req.method === "POST" && url.pathname === "/api/entrylist") {
       const body = await readBody(req);
       const csvText = body.csv || body.csvText || "";
@@ -413,10 +441,13 @@ const server = http.createServer(async (req, res) => {
           throw new Error("Penalties can only be applied to the race session");
         }
         seg.penalties = cleaned;
+        const at = seg.frozenAt ? new Date(seg.frozenAt) : new Date();
         const csv = buildSessionCsvRows(seg.drivers, seg.penalties);
-        const filename =
-          seg.csvFile || buildResultFilename(seg, seg.frozenAt ? new Date(seg.frozenAt) : new Date());
+        const filename = seg.csvFile || buildResultFilename(seg, at);
         seg.csvFile = store.writeResultFile(filename, csv);
+        const lapsCsv = buildSessionLapsCsvRows(seg.drivers, seg.penalties);
+        const lapsName = seg.lapsCsvFile || buildLapsResultFilename(seg, at);
+        seg.lapsCsvFile = store.writeResultFile(lapsName, lapsCsv);
       } else {
         // Live race only
         const kind = session.currentKind || require("./session-kind").normalizeSessionKind(session.sessionLabel);

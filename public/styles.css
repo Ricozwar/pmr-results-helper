@@ -67,6 +67,18 @@ button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
 
 .segment-card { margin-bottom: 16px; }
 .segment-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.capture-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #1a1208;
+  background: var(--accent);
+  vertical-align: middle;
+}
 #segmentsHost { margin-bottom: 8px; }
 #liveTitle { margin: 0; }
 
