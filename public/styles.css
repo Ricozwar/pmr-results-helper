@@ -33,6 +33,17 @@ code { color: var(--accent); }
   padding: 6px 0;
 }
 .header-help:hover { color: var(--accent); }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.app-version {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
 h1, h2 { margin: 0; }
 h1 { font-size: 32px; }
 h2 { font-size: 18px; }

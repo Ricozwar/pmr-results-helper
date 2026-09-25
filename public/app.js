@@ -384,6 +384,9 @@ function openPenaltiesDefault() {
 function render(state) {
   latestState = state;
   const snap = state.snapshot || {};
+  const ver = state.version ? `v${state.version}` : "v—";
+  if ($("appVersion")) $("appVersion").textContent = ver;
+  if ($("footerVersion")) $("footerVersion").textContent = ver;
   updateBanner(state);
   const hint = $("udpHint");
   hint.textContent = udpHintText(state);

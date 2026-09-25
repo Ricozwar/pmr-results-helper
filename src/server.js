@@ -19,6 +19,8 @@ const store = require("./store");
 const { buildSessionCsvRows, buildSessionLapsCsvRows, buildResultFilename, buildLapsResultFilename } = require("./session-csv");
 
 const publicDir = path.join(__dirname, "..", "public");
+const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
+const APP_VERSION = String(pkg.version || "0.0.0");
 const session = new RaceSession();
 let state = store.loadAll();
 let mergedEntrylist = [];
@@ -164,6 +166,7 @@ function currentPayload() {
   });
   return {
     ok: true,
+    version: APP_VERSION,
     listening: Boolean(udpBound),
     udpError,
     udp: udpStatus(),
