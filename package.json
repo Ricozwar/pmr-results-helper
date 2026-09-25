@@ -1,6 +1,6 @@
 {
   "name": "pmr-results-helper",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "Local helper: capture Project Motor Racing UDP session results (CSV / tables / JSON)",
   "main": "src/server.js",
