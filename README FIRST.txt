@@ -85,6 +85,12 @@ B) CSV files
    Race also saves a second file with per-lap times:
         Race_Daytona_21.09.2026_laps.csv
 
+   And a positions / lap-chart file:
+        Race_Daytona_21.09.2026_positions.csv
+
+   In the UI, open **Lap chart** on a saved Race card to see who was
+   where at the end of each lap.
+
    Race results use a “pre-finish” snapshot (standings just before the
    leader crosses the line), because PMR often corrupts the order after
    the finish. Optional: click “Save standings now” during the race.

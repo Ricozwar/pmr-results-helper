@@ -25,7 +25,7 @@ used wherever you publish league results.
 - Live classification from PMR UDP (default port `7580`)
 - Automatic weekend segments: **Practice / Qualifying / Race**
 - Auto-saves CSV files into `results/` (example: `Quali_Kyalami_22.09.2026.csv`)
-- **Race pre-finish capture:** standings are locked just before the leader finishes (PMR often corrupts results after the line). Race also writes a `*_laps.csv` with per-lap times.
+- **Race pre-finish capture:** standings are locked just before the leader finishes (PMR often corrupts results after the line). Race also writes a `*_laps.csv` with per-lap times and a `*_positions.csv` / **Lap chart** (position at the end of each lap).
 - Click a row to expand lap times
 - Race-only penalties (seconds added to total time; positions not re-sorted)
 - Optional **Save standings now** during a live race (manual pre-finish lock)

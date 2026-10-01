@@ -8,6 +8,8 @@ let draftPenalties = {};
 let expandedKey = null;
 /** segment id when editing archived race penalties; null = live */
 let penaltyTargetSegmentId = null;
+/** @type {Set<string>} */
+const openLapCharts = new Set();
 
 function formatMs(ms) {
   if (ms == null || !Number.isFinite(ms)) return "—";
@@ -165,6 +167,57 @@ function getRacePenaltyTarget(state) {
   return null;
 }
 
+function hasPositionHistory(drivers) {
+  return (drivers || []).some((d) => Array.isArray(d.positionByLap) && d.positionByLap.length);
+}
+
+function lapChartHtml(seg) {
+  const drivers = [...(seg.drivers || [])].sort((a, b) => {
+    if (a.position && b.position) return a.position - b.position;
+    if (a.position) return -1;
+    if (b.position) return 1;
+    return 0;
+  });
+  if (!hasPositionHistory(drivers)) {
+    return `<p class="hint">No lap-by-lap position history for this race.</p>`;
+  }
+  const maxLaps = drivers.reduce((max, d) => {
+    const n = Array.isArray(d.positionByLap) ? d.positionByLap.length : 0;
+    return Math.max(max, n, Array.isArray(d.lapTimes) ? d.lapTimes.length : 0);
+  }, 0);
+  const head = Array.from({ length: maxLaps }, (_, i) => `<th>L${i + 1}</th>`).join("");
+  const rows = drivers
+    .map((d) => {
+      const hist = Array.isArray(d.positionByLap) ? d.positionByLap : [];
+      const cells = [];
+      for (let i = 0; i < maxLaps; i += 1) {
+        const pos = hist[i];
+        const prev = i > 0 ? hist[i - 1] : null;
+        let cls = "pos-cell";
+        if (pos && prev) {
+          if (pos < prev) cls += " pos-gain";
+          else if (pos > prev) cls += " pos-loss";
+        }
+        cells.push(`<td class="${cls}">${pos || "—"}</td>`);
+      }
+      return `<tr>
+        <td>${d.position || "—"}</td>
+        <td>${d.name || "—"}</td>
+        ${cells.join("")}
+      </tr>`;
+    })
+    .join("");
+  return `<div class="lap-chart-wrap">
+    <p class="hint">Position at the end of each lap (green = gained, red = lost vs previous lap).</p>
+    <div class="lap-chart-scroll">
+      <table class="lap-chart-table">
+        <thead><tr><th>Finish</th><th>Driver</th>${head}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
 function renderSegments(state) {
   const host = $("segmentsHost");
   const segments = state.segments || state.snapshot?.segments || [];
@@ -184,6 +237,18 @@ function renderSegments(state) {
             ? `<a class="btn-link" href="/api/results/${encodeURIComponent(seg.lapsCsvFile)}" download>Laps CSV</a>`
             : `<button type="button" class="ghost export-laps-seg" data-seg-id="${seg.id}">Download laps CSV</button>`
           : "";
+      const posFile =
+        seg.kind === "race"
+          ? seg.positionsCsvFile
+            ? `<a class="btn-link" href="/api/results/${encodeURIComponent(seg.positionsCsvFile)}" download>Positions CSV</a>`
+            : `<button type="button" class="ghost export-pos-seg" data-seg-id="${seg.id}">Download positions CSV</button>`
+          : "";
+      const chartBtn =
+        seg.kind === "race" && hasPositionHistory(seg.drivers)
+          ? `<button type="button" class="ghost toggle-lap-chart" data-seg-id="${seg.id}">${
+              openLapCharts.has(seg.id) ? "Hide lap chart" : "Lap chart"
+            }</button>`
+          : "";
       const penBtn =
         seg.kind === "race"
           ? `<button type="button" class="ghost race-penalties-btn" data-seg-id="${seg.id}">Penalties</button>`
@@ -192,15 +257,18 @@ function renderSegments(state) {
         seg.captureSource === "pre_finish"
           ? `<span class="capture-badge" title="Standings frozen just before the leader finished">Pre-finish capture</span>`
           : "";
+      const chartBlock =
+        seg.kind === "race" && openLapCharts.has(seg.id) ? lapChartHtml(seg) : "";
       return `<section class="card table-card segment-card" data-seg="${seg.id}">
         <div class="card-head">
           <div>
             <h2>${seg.uiLabel || seg.label || "Session"} ${badge}</h2>
             <p class="hint">Track: ${track} · saved · ${seg.csvFile ? "CSV OK" : "CSV pending"} · click row = laps</p>
           </div>
-          <div class="segment-actions">${penBtn}${file}${lapsFile}</div>
+          <div class="segment-actions">${penBtn}${chartBtn}${file}${lapsFile}${posFile}</div>
         </div>
         ${driversTableHtml(seg.drivers, seg.penalties || {}, { clickable: true, scope: seg.id })}
+        ${chartBlock}
       </section>`;
     })
     .join("");
@@ -236,6 +304,32 @@ function renderSegments(state) {
       } catch (err) {
         btn.textContent = String(err.message || err);
       }
+    });
+  });
+
+  host.querySelectorAll(".export-pos-seg").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.segId;
+      try {
+        const data = await post(`/api/sessions/${encodeURIComponent(id)}/export-positions-csv`);
+        if (data.file) {
+          window.location.href = `/api/results/${encodeURIComponent(data.file)}`;
+        }
+        const fresh = await fetch("/api/state").then((r) => r.json());
+        render(fresh);
+      } catch (err) {
+        btn.textContent = String(err.message || err);
+      }
+    });
+  });
+
+  host.querySelectorAll(".toggle-lap-chart").forEach((btn) => {
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const id = btn.dataset.segId;
+      if (openLapCharts.has(id)) openLapCharts.delete(id);
+      else openLapCharts.add(id);
+      render(latestState);
     });
   });
 

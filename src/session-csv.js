@@ -129,11 +129,48 @@ function buildLapsResultFilename(segment, at = new Date()) {
   return `${base}_laps.csv`;
 }
 
+function buildSessionPositionsCsvRows(drivers) {
+  const list = [...(drivers || [])].sort((a, b) => {
+    if (a.position && b.position) return a.position - b.position;
+    if (a.position) return -1;
+    if (b.position) return 1;
+    return 0;
+  });
+  const maxLaps = list.reduce((max, d) => {
+    const hist = Array.isArray(d.positionByLap) ? d.positionByLap.length : 0;
+    const laps = Array.isArray(d.lapTimes) ? d.lapTimes.length : 0;
+    return Math.max(max, hist, laps, d.completedLaps || 0);
+  }, 0);
+
+  const header = ["In-game name", "Car"];
+  for (let i = 1; i <= maxLaps; i += 1) header.push(`Lap${i}`);
+  header.push("Finish");
+
+  const lines = [header.map(escapeCsv).join(",")];
+  for (const d of list) {
+    const hist = Array.isArray(d.positionByLap) ? d.positionByLap : [];
+    const row = [d.name || "", d.car || ""];
+    for (let i = 0; i < maxLaps; i += 1) {
+      row.push(hist[i] || "");
+    }
+    row.push(d.position || "");
+    lines.push(row.map(escapeCsv).join(","));
+  }
+  return lines.join("\n") + "\n";
+}
+
+function buildPositionsResultFilename(segment, at = new Date()) {
+  const base = buildResultFilename(segment, at).replace(/\.csv$/i, "");
+  return `${base}_positions.csv`;
+}
+
 module.exports = {
   buildSessionCsvRows,
   buildSessionLapsCsvRows,
+  buildSessionPositionsCsvRows,
   buildResultFilename,
   buildLapsResultFilename,
+  buildPositionsResultFilename,
   formatDateLocal,
   sanitizePart,
   escapeCsv,

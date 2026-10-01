@@ -29,6 +29,7 @@ function emptyDriver(vehicleId) {
     currentLap: 0,
     completedLaps: 0,
     lapTimes: [],
+    positionByLap: [],
     bestLapMs: null,
     lastLapMs: null,
     totalTimeMs: null,
@@ -47,7 +48,35 @@ function cloneDriver(d) {
   return {
     ...d,
     lapTimes: Array.isArray(d.lapTimes) ? [...d.lapTimes] : [],
+    positionByLap: Array.isArray(d.positionByLap) ? [...d.positionByLap] : [],
   };
+}
+
+function recordPositionForLap(driver, position) {
+  if (!Array.isArray(driver.positionByLap)) driver.positionByLap = [];
+  const pos = Number(position) || 0;
+  if (!pos) return;
+  // Align with lapTimes: one position entry per completed lap slot.
+  while (driver.positionByLap.length < driver.lapTimes.length - 1) {
+    driver.positionByLap.push(pos);
+  }
+  if (driver.positionByLap.length < driver.lapTimes.length) {
+    driver.positionByLap.push(pos);
+  } else if (driver.positionByLap.length === driver.lapTimes.length && driver.lapTimes.length > 0) {
+    driver.positionByLap[driver.positionByLap.length - 1] = pos;
+  }
+}
+
+function syncPositionHistoryLength(driver) {
+  if (!Array.isArray(driver.positionByLap)) driver.positionByLap = [];
+  const target = Array.isArray(driver.lapTimes) ? driver.lapTimes.length : 0;
+  const pos = Number(driver.position) || 0;
+  while (driver.positionByLap.length < target) {
+    driver.positionByLap.push(pos || driver.positionByLap[driver.positionByLap.length - 1] || 0);
+  }
+  if (driver.positionByLap.length > target) {
+    driver.positionByLap.length = target;
+  }
 }
 
 class RaceSession {
@@ -168,6 +197,20 @@ class RaceSession {
     driver.totalTimeMs = driver.lapTimes.length
       ? driver.lapTimes.reduce((sum, t) => sum + t, 0)
       : fromBest || null;
+
+    syncPositionHistoryLength(driver);
+    if (
+      driver.positionByLap.length &&
+      driver.position &&
+      driver.positionByLap[driver.positionByLap.length - 1] !== driver.position
+    ) {
+      // Keep last slot in sync with current standing when finalizing open/finish laps.
+      if (includeOpenLap || driver.finished) {
+        driver.positionByLap[driver.positionByLap.length - 1] = driver.position;
+      }
+    } else if (!driver.positionByLap.length && driver.lapTimes.length && driver.position) {
+      recordPositionForLap(driver, driver.position);
+    }
   }
 
   finalizeDriversBeforeArchive(driversIterable = null, opts = {}) {
@@ -328,6 +371,7 @@ class RaceSession {
       penalties: { ...(penalties || {}) },
       csvFile: null,
       lapsCsvFile: null,
+      positionsCsvFile: null,
     };
     this.segments.push(segment);
     this.drivers = new Map();
@@ -481,6 +525,11 @@ class RaceSession {
         driver.lapTimes.push(finishedLapMs);
         driver.lastLapMs = finishedLapMs;
       }
+      // Position at end of the lap just completed (from this crossing packet).
+      const endPos = parsed.racePos || driver.position || 0;
+      if (endPos && driver.lapTimes.length > driver.positionByLap.length) {
+        recordPositionForLap(driver, endPos);
+      }
       driver.seenRacing = true;
       driver.raceState = "racing";
     } else if (lap > 0 || (parsed.currentLapTime || 0) > 1) {
@@ -520,6 +569,10 @@ class RaceSession {
           driver.lapTimes.push(rem);
           driver.lastLapMs = rem;
         }
+      }
+      syncPositionHistoryLength(driver);
+      if (driver.position && driver.lapTimes.length) {
+        recordPositionForLap(driver, driver.position);
       }
     }
 
@@ -721,4 +774,5 @@ module.exports = {
   buildSimgridJson,
   stripExport,
   toMs,
+  cloneDriver,
 };

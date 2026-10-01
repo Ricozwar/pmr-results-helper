@@ -90,6 +90,14 @@ button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
   background: var(--accent);
   vertical-align: middle;
 }
+.lap-chart-wrap { margin-top: 14px; padding-top: 8px; border-top: 1px solid var(--line); }
+.lap-chart-scroll { overflow-x: auto; }
+.lap-chart-table { min-width: 100%; font-size: 13px; }
+.lap-chart-table th, .lap-chart-table td { text-align: center; white-space: nowrap; }
+.lap-chart-table th:nth-child(2), .lap-chart-table td:nth-child(2) { text-align: left; }
+.pos-cell { font-weight: 650; }
+.pos-gain { color: var(--good); }
+.pos-loss { color: var(--bad); }
 #segmentsHost { margin-bottom: 8px; }
 #liveTitle { margin: 0; }
 

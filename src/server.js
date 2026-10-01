@@ -16,7 +16,14 @@ const {
   raceTableToSimgridJson,
 } = require("./entrylist");
 const store = require("./store");
-const { buildSessionCsvRows, buildSessionLapsCsvRows, buildResultFilename, buildLapsResultFilename } = require("./session-csv");
+const {
+  buildSessionCsvRows,
+  buildSessionLapsCsvRows,
+  buildSessionPositionsCsvRows,
+  buildResultFilename,
+  buildLapsResultFilename,
+  buildPositionsResultFilename,
+} = require("./session-csv");
 
 const publicDir = path.join(__dirname, "..", "public");
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
@@ -47,6 +54,11 @@ function persistArchivedSegments(segments) {
       const lapsName = buildLapsResultFilename(seg, at);
       seg.lapsCsvFile = store.writeResultFile(lapsName, lapsCsv);
       console.log(`Saved lap times: results/${seg.lapsCsvFile}`);
+
+      const posCsv = buildSessionPositionsCsvRows(seg.drivers);
+      const posName = buildPositionsResultFilename(seg, at);
+      seg.positionsCsvFile = store.writeResultFile(posName, posCsv);
+      console.log(`Saved positions: results/${seg.positionsCsvFile}`);
     }
   }
   // Kary należą do zarchiwizowanej części — nie przenoszą się na kolejną.
@@ -389,6 +401,22 @@ const server = http.createServer(async (req, res) => {
       seg.lapsCsvFile = saved;
       const liveSeg = session.segments.find((s) => s.id === id);
       if (liveSeg) liveSeg.lapsCsvFile = saved;
+      broadcast();
+      return json(res, 200, { ok: true, file: saved, results: store.listResultFiles() });
+    }
+    if (req.method === "POST" && url.pathname.startsWith("/api/sessions/") && url.pathname.endsWith("/export-positions-csv")) {
+      const id = decodeURIComponent(url.pathname.slice("/api/sessions/".length, -"/export-positions-csv".length));
+      const snap = session.snapshot();
+      const seg = (snap.segments || []).find((s) => s.id === id);
+      if (!seg) throw new Error("Session segment not found");
+      const csv = buildSessionPositionsCsvRows(seg.drivers);
+      const filename =
+        seg.positionsCsvFile ||
+        buildPositionsResultFilename(seg, seg.frozenAt ? new Date(seg.frozenAt) : new Date());
+      const saved = store.writeResultFile(filename, csv);
+      seg.positionsCsvFile = saved;
+      const liveSeg = session.segments.find((s) => s.id === id);
+      if (liveSeg) liveSeg.positionsCsvFile = saved;
       broadcast();
       return json(res, 200, { ok: true, file: saved, results: store.listResultFiles() });
     }

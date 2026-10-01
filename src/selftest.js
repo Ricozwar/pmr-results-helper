@@ -581,5 +581,130 @@ if (!lapsCsv.includes("Lap1") || !lapsCsv.includes("Lap2")) {
 }
 if (!lapsCsv.includes("Leader")) throw new Error("laps CSV missing leader");
 
+const { buildSessionPositionsCsvRows } = require("./session-csv");
+const leaderArch = pfArchived[0].drivers.find((d) => d.name === "Leader");
+const secondArch = pfArchived[0].drivers.find((d) => d.name === "Second");
+if (!leaderArch?.positionByLap?.length) {
+  throw new Error("Leader missing positionByLap history");
+}
+if (leaderArch.positionByLap[0] !== 1) {
+  throw new Error(`Leader lap1 position expected 1, got ${leaderArch.positionByLap[0]}`);
+}
+if (!secondArch?.positionByLap?.length || secondArch.positionByLap[0] !== 2) {
+  throw new Error(`Second lap1 position expected 2, got ${secondArch?.positionByLap?.[0]}`);
+}
+const posCsv = buildSessionPositionsCsvRows(pfArchived[0].drivers);
+if (!posCsv.includes("Lap1") || !posCsv.includes("Finish") || !posCsv.includes("Leader")) {
+  throw new Error("positions CSV missing expected columns/drivers");
+}
+
+// --- position history with overtake between laps ---
+const chart = new RaceSession();
+chart.ingest(parsePacket(buildRaceInfo("Race", 1, 2)));
+chart.ingest(
+  parsePacket(
+    buildParticipant({
+      id: 10,
+      player: true,
+      car: "MX-5",
+      name: "A",
+      cls: "MX5",
+      pos: 1,
+      lap: 1,
+      cur: 70,
+      best: 70,
+    })
+  )
+);
+chart.ingest(
+  parsePacket(
+    buildParticipant({
+      id: 11,
+      player: false,
+      car: "MX-5",
+      name: "B",
+      cls: "MX5",
+      pos: 2,
+      lap: 1,
+      cur: 71,
+      best: 71,
+    })
+  )
+);
+// Complete lap 1 — A still ahead
+chart.ingest(
+  parsePacket(
+    buildParticipant({
+      id: 10,
+      player: true,
+      car: "MX-5",
+      name: "A",
+      cls: "MX5",
+      pos: 1,
+      lap: 2,
+      cur: 20,
+      best: 70,
+      progress: 0.2,
+    })
+  )
+);
+chart.ingest(
+  parsePacket(
+    buildParticipant({
+      id: 11,
+      player: false,
+      car: "MX-5",
+      name: "B",
+      cls: "MX5",
+      pos: 2,
+      lap: 2,
+      cur: 21,
+      best: 71,
+      progress: 0.2,
+    })
+  )
+);
+// B overtakes; complete race near finish as B P1
+chart.ingest(
+  parsePacket(
+    buildParticipant({
+      id: 11,
+      player: false,
+      car: "MX-5",
+      name: "B",
+      cls: "MX5",
+      pos: 1,
+      lap: 2,
+      cur: 69,
+      best: 71,
+      progress: 0.95,
+    })
+  )
+);
+chart.ingest(
+  parsePacket(
+    buildParticipant({
+      id: 10,
+      player: true,
+      car: "MX-5",
+      name: "A",
+      cls: "MX5",
+      pos: 2,
+      lap: 2,
+      cur: 72,
+      best: 70,
+      progress: 0.9,
+    })
+  )
+);
+const chartArch = chart.ingest({ type: "sessionStopped", packetType: 3, packetVersion: 1 });
+if (!chartArch.length) throw new Error("position chart race did not archive");
+const aHist = chartArch[0].drivers.find((d) => d.name === "A")?.positionByLap || [];
+const bHist = chartArch[0].drivers.find((d) => d.name === "B")?.positionByLap || [];
+if (aHist[0] !== 1 || bHist[0] !== 2) {
+  throw new Error(`lap1 positions wrong A=${aHist[0]} B=${bHist[0]}`);
+}
+if (!aHist.length || !bHist.length) throw new Error("missing position history after overtake race");
+
 console.log("ok");
 console.log(JSON.stringify({ entrylist: form.map((r) => ({ pos: r.position, name: r.name, dns: r.dns, unmapped: r.unmapped, pen: r.penaltySec })), legacy: json, multiFile: fname, raceTotal: one.totalTimeMs }, null, 2));
